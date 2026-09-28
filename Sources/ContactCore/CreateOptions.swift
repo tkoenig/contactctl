@@ -1,7 +1,7 @@
 import Foundation
 import ImageIO
 
-public struct CreateOptions {
+public struct CreateOptions: Sendable {
     public var givenName = ""
     public var familyName = ""
     public var organization = ""

@@ -19,6 +19,6 @@
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <key>NSContactsUsageDescription</key>
-    <string>contactctl needs access to search and create contacts at your request.</string>
+    <string>contactctl needs access to search, create, update, and delete contacts at your request.</string>
 </dict>
 </plist>

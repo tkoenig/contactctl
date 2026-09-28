@@ -1,0 +1,25 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: swift --version
+      - name: Swift Testing with coverage (synthetic data only)
+        run: make test
+      - name: Build and ad-hoc sign
+        run: make build
+      - name: CLI safety smoke checks (no Contacts access)
+        run: python3 scripts/smoke-test.py .build/release/contactctl
+      - name: Verify signature
+        run: codesign --verify --strict .build/release/contactctl
+      - name: Check whitespace
+        run: git diff --check

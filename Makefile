@@ -4,10 +4,11 @@ CONFIGURATION ?= release
 .PHONY: build test install clean
 
 build:
-	swift build -c $(CONFIGURATION)
+	swift build -c $(CONFIGURATION) --product contactctl
+	codesign --force --sign - --identifier com.tkoenig.contactctl ".build/$(CONFIGURATION)/contactctl"
 
 test:
-	swift run contactctl-core-checks
+	swift test --enable-code-coverage
 
 install: build
 	install -d "$(PREFIX)/bin"

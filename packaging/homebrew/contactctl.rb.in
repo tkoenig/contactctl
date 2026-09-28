@@ -1,0 +1,31 @@
+class Contactctl < Formula
+  desc "Native macOS CLI for searching and managing Contacts"
+  homepage "https://github.com/tkoenig/contactctl"
+  url "https://github.com/tkoenig/contactctl/archive/refs/tags/@TAG@.tar.gz"
+  sha256 "@SHA256@"
+  version "@VERSION@"
+  license "MIT"
+
+  depends_on :macos
+  depends_on xcode: ["16.0", :build]
+
+  def install
+    system "swift", "build", "--disable-sandbox", "-c", "release", "--product", "contactctl"
+    bin.install ".build/release/contactctl"
+    system "codesign", "--force", "--sign", "-", "--identifier", "com.tkoenig.contactctl", bin/"contactctl"
+  end
+
+  def caveats
+    <<~EOS
+      Run `contactctl authorize` from your terminal to grant Contacts access.
+      Updates may require granting permission again.
+      Deletion requires --yes; use --dry-run to preview first.
+    EOS
+  end
+
+  test do
+    assert_match "contactctl #{version}", shell_output("#{bin}/contactctl --version")
+    assert_match "--dry-run", shell_output("#{bin}/contactctl help")
+    assert_match "usage: contactctl delete", shell_output("#{bin}/contactctl delete synthetic-id 2>&1", 1)
+  end
+end

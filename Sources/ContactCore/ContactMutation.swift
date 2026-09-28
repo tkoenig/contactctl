@@ -70,23 +70,25 @@ public enum ContactMutation {
     }
 }
 
-/// Destructive operations require both an identifier and explicit confirmation.
-public struct DeleteOptions {
+/// Only read-only previews may omit explicit confirmation.
+public struct DeleteOptions: Sendable {
     public let identifier: String
     public let json: Bool
+    public let dryRun: Bool
 
     public init(arguments: [String]) throws {
         guard let identifier = arguments.first, !identifier.hasPrefix("-"),
               !identifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              arguments.dropFirst().allSatisfy({ $0 == "--yes" || $0 == "--json" }),
-              arguments.dropFirst().contains("--yes") else {
+              arguments.dropFirst().allSatisfy({ ["--yes", "--json", "--dry-run"].contains($0) }),
+              (arguments.dropFirst().contains("--yes") || arguments.dropFirst().contains("--dry-run")) else {
             throw DeleteOptionsError()
         }
         self.identifier = identifier
         self.json = arguments.dropFirst().contains("--json")
+        self.dryRun = arguments.dropFirst().contains("--dry-run")
     }
 }
 
 private struct DeleteOptionsError: LocalizedError {
-    var errorDescription: String? { "usage: contactctl delete <identifier> --yes [--json] (permanently deletes the contact)" }
+    var errorDescription: String? { "usage: contactctl delete <identifier> (--yes | --dry-run) [--json] (--yes permanently deletes; --dry-run only previews)" }
 }

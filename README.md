@@ -9,7 +9,7 @@ A small native macOS CLI for searching, viewing, creating, updating, and deletin
 ## Requirements
 
 - macOS 13 or newer
-- Xcode Command Line Tools with Swift
+- Swift 6 toolchain (Xcode 16+ or compatible Command Line Tools) for building
 - Contacts permission when prompted
 - No paid Apple Developer account
 
@@ -32,7 +32,15 @@ Optionally install it into `~/.local/bin`:
 make install
 ```
 
-The binary embeds an `NSContactsUsageDescription` so macOS can display a permission prompt. Rebuilding or moving an ad-hoc local executable can sometimes cause macOS to request permission again.
+The binary embeds an `NSContactsUsageDescription` so macOS can display a permission prompt. `make build` ad-hoc signs it with the `com.tkoenig.contactctl` identifier. Rebuilding or moving the executable can still cause macOS to request permission again.
+
+### Homebrew
+
+```sh
+brew install tkoenig/tap/contactctl
+```
+
+The formula builds from source with Xcode 16+. Once installed, run `contactctl authorize` from your terminal to grant Contacts access. See [the publishing checklist](packaging/homebrew/README.md) for maintaining the tap.
 
 ## Usage
 
@@ -40,8 +48,13 @@ The binary embeds an `NSContactsUsageDescription` so macOS can display a permiss
 contactctl status
 contactctl authorize
 contactctl search "Ada" --json
+contactctl search "@example.com"       # Email/domain substring
+contactctl search '+44 (20) 1234'      # Phone substring, ignoring formatting
+contactctl search "Analytical Engines" # Organization substring
 contactctl show <identifier> --json
 ```
+
+Search combines Apple's native name search with local name, email, and organization substring matching that ignores case and accents (for example, `Muller` matches `Müller`). Phone queries may contain digits, whitespace, `+`, parentheses, hyphens, dots, and slashes; formatting is removed before matching a digit substring. Country-code prefixes are not inferred (for example `0044` is not rewritten to `+44`). Results are deduplicated by unified contact identifier and sorted by display name before applying `--limit` (default 25). Additional-field search scans the locally accessible Contacts store, so large address books may take longer. No contact data leaves the machine.
 
 Create a contact:
 
@@ -73,10 +86,10 @@ Use the identifier returned by `search` or `show`:
 
 ```sh
 contactctl update '<identifier>' \
-  --job-title 'Grundstücksmanagerin' \
-  --street 'Wagramer Straße 19' --city Wien --postal-code 1220 \
+  --job-title Engineer \
+  --street '1 Example Street' --city Wien --postal-code 1010 \
   --country AT --address-label work \
-  --url 'homepage=www.apg.at'
+  --url 'homepage=https://example.com'
 
 contactctl update '<identifier>' --photo ~/Pictures/portrait.jpg
 contactctl update '<identifier>' --job-title '' --clear photo
@@ -95,18 +108,27 @@ contactctl update '<identifier>' --job-title '' --clear photo
 Inspect the identifier first. There is no CLI undo, and Contacts/iCloud may sync the deletion to other devices. Deleting a unified contact can affect its linked records.
 
 ```sh
-contactctl show '<identifier>'
+contactctl delete '<identifier>' --dry-run
+contactctl delete '<identifier>' --dry-run --json
 contactctl delete '<identifier>' --yes
 ```
 
-Without `--yes`, deletion is rejected before accessing Contacts. `--json` returns `{"deleted":"<identifier>"}` after a successful save.
+Actual deletion always requires `--yes`, including scripts/non-TTY use. Without `--yes` or `--dry-run`, the command is rejected before accessing Contacts. `--dry-run` only reads and displays the contact; it takes precedence even when combined with `--yes`. JSON previews return `{"dryRun":true,"wouldDelete":{...contact...}}`; successful actual deletions return `{"deleted":"<identifier>"}`. Previewing may request Contacts permission but does not write anything.
 
 Not yet supported: multiple postal addresses on creation, selecting a specific address for update, birthdays, relationships, social profiles, and vCard import/export.
 
 ## Testing
 
 ```sh
-make test
+make test # swift test --enable-code-coverage
+make build
+python3 scripts/smoke-test.py
 ```
 
-The automated tests use synthetic records and in-memory `CNMutableContact` objects. They check parsing, output, field preservation/replacement/clearing, photo handling, and the delete confirmation gate, without accessing the real Contacts store. Actual store saves/deletes are not exercised.
+Swift Testing suites use synthetic records, in-memory `CNMutableContact` objects, and a fake deletion store. They cover parsing, output, accent-insensitive search, phone matching, deduplication/sorting/limits, field preservation/replacement/clearing, photos, authorization-status mapping, and deletion safety (including dry-run with `--yes`). Neither the tests nor CLI smoke checks access the real Contacts store. Actual authorization dialogs, store saves/deletes, and Homebrew installs are not exercised by this suite.
+
+GitHub Actions runs these checks on macOS. Framework access lives in the `ContactsStore` actor; authorization uses async continuations rather than blocking a thread. CLI routing only parses arguments and formats results.
+
+## License
+
+[MIT](LICENSE).

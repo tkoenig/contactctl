@@ -10,8 +10,7 @@ let package = Package(
     name: "contactctl",
     platforms: [.macOS(.v13)],
     products: [
-        .executable(name: "contactctl", targets: ["contactctl"]),
-        .executable(name: "contactctl-core-checks", targets: ["ContactCoreChecks"])
+        .executable(name: "contactctl", targets: ["contactctl"])
     ],
     targets: [
         .target(name: "ContactCore"),
@@ -27,10 +26,10 @@ let package = Package(
                 ])
             ]
         ),
-        .executableTarget(
-            name: "ContactCoreChecks",
+        .testTarget(
+            name: "ContactCoreTests",
             dependencies: ["ContactCore"],
-            path: "Checks/ContactCoreChecks"
+            resources: [.copy("Fixtures")]
         )
     ]
 )
